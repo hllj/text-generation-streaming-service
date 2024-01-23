@@ -11,15 +11,30 @@ from vllm.engine.async_llm_engine import AsyncLLMEngine
 from vllm.sampling_params import SamplingParams
 from vllm.utils import random_uuid
 
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
+
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
+instrumentator = Instrumentator().instrument(app)
 engine = None
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/health")
 async def health() -> Response:
     """Health check."""
     return Response(status_code=200)
+
+@app.on_event("startup")
+async def _startup():
+    instrumentator.expose(app)
 
 
 @app.post("/generate")

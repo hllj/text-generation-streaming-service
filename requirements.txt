@@ -12,3 +12,4 @@ uvicorn[standard]
 pydantic==1.10.13
 aioprometheus[starlette]
 vllm==0.2.5
+prometheus-fastapi-instrumentator

@@ -314,6 +314,10 @@ def split_and_save_weight(i, saved_dir, factor, key, vals, storage_type,
                                axis=-1) for ii in range(factor)
             ]
             split_dim = -1
+        elif "query_key_value.bias" in key:
+            val = val.reshape(hidden_dim, 1)
+            split_dim = -1
+            split_vals = np.split(val, factor, axis=split_dim)
         else:
             val = val.reshape(hidden_dim, 3, local_dim)
             split_dim = -1

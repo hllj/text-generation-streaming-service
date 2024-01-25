@@ -46,21 +46,9 @@ python3 services/vllm/server.py \
 --seed 42
 ```
 
+## TensorRT service
+
 ### Quantization
-
-## Start TensorRT service
-
-```bash
-bash start_tensorrt_server.sh
-```
-
-or 
-
-```bash
-python3 services/tensorrt/server.py trt_engines/phogpt-7b5-instruct/fp16/1-gpu/ vinai/PhoGPT-7B5-Instruct \
---host 127.0.0.1 \
---port 8000 \
-```
 
 ## Convert HF weight to Float16
 
@@ -90,7 +78,7 @@ python3 services/tensorrt/build.py \
 ### Run a test
 
 ```bash
-python3 services/tensorrt/test_tensorrt.py \ 
+python3 services/tensorrt/test_tensorrt.py \
 --max_output_len 300 \
 --engine_dir ./trt_engines/phogpt-7b5-instruct/fp16/1-gpu/ \
 --tokenizer_dir vinai/PhoGPT-7B5-Instruct \
@@ -99,4 +87,16 @@ python3 services/tensorrt/test_tensorrt.py \
 --use_py_session
 ```
 
-### Quantization
+### Start TensorRT service
+
+```bash
+bash start_tensorrt_server.sh
+```
+
+or 
+
+```bash
+python3 services/tensorrt/server.py trt_engines/phogpt-7b5-instruct/fp16/1-gpu/ vinai/PhoGPT-7B5-Instruct \
+--host 127.0.0.1 \
+--port 8000 \
+```

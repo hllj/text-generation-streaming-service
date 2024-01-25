@@ -38,16 +38,21 @@ async def generate(request: Request) -> Response:
     """
     request_dict = await request.json()
 
-    streaming = request_dict.pop("streaming", False)
-    promise = executor.generate_async(request_dict.pop("prompt"),
-                                      request_dict.pop("max_num_tokens", 8),
-                                      streaming)
+    prompt = request_dict.pop("prompt")
+
+    max_num_tokens = request_dict.pop("max_num_tokens", 8)
+
+    stream = request_dict.pop("stream", False)
+
+    promise = executor.generate_async(prompt,
+                                      stream,
+                                      max_num_tokens)
 
     async def stream_results() -> AsyncGenerator[bytes, None]:
         async for output in promise:
             yield (json.dumps(output.text) + "\0").encode("utf-8")
 
-    if streaming:
+    if stream:
         return StreamingResponse(stream_results())
 
     # Non-streaming case

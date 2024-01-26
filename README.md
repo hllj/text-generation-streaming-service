@@ -42,7 +42,7 @@ bash start_vllm_server.sh
 or
 
 ```bash
-python3 services/vllm/server.py \
+python3 src/services/vllm/server.py \
 --host 127.0.0.1 \
 --port 8000 \
 --model vinai/PhoGPT-7B5-Instruct \
@@ -62,7 +62,7 @@ Follow instruction in /services/tensorrt README.
 
 ### Convert to FT format in dtype float32/float16/bfloat16
 ```bash
-python3 services/tensorrt/convert_hf_mpt_to_ft.py \
+python3 src/services/tensorrt/convert_hf_mpt_to_ft.py \
 -i vinai/PhoGPT-7B5-Instruct \
 -o ./weights/ft/phogpt-7b5-instruct/fp16/ \
 -t float16
@@ -71,21 +71,24 @@ python3 services/tensorrt/convert_hf_mpt_to_ft.py \
 ### Build Engine
 
 ```bash
-python3 services/tensorrt/build.py \
+python3 src/services/tensorrt/build.py \
 --model_dir=./weights/ft/phogpt-7b5-instruct/fp16/1-gpu/ \
---max_batch_size 64 \
+--max_batch_size 16 \
 --use_inflight_batching \
 --paged_kv_cache \
 --use_gpt_attention_plugin \
 --use_gemm_plugin \
---output_dir ./trt_engines/phogpt-7b5-instruct/fp16/1-gpu/
+--output_dir ./trt_engines/phogpt-7b5-instruct/fp16/1-gpu/ \
+--max_input_len 1024 \
+--max_output_len 1024 \
+--max_num_tokens 2048
 ```
 
 ### Run a test
 
 ```bash
-python3 services/tensorrt/test_tensorrt.py \
---max_output_len 300 \
+python3 src/services/tensorrt/test.py \
+--max_output_len 1024 \
 --engine_dir ./trt_engines/phogpt-7b5-instruct/fp16/1-gpu/ \
 --tokenizer_dir vinai/PhoGPT-7B5-Instruct \
 --input_text "### Câu hỏi:\nViết bài văn nghị luận xã hội về an toàn giao thông\n\n### Trả lời:" \
@@ -102,7 +105,7 @@ bash start_tensorrt_server.sh
 or 
 
 ```bash
-python3 services/tensorrt/server.py trt_engines/phogpt-7b5-instruct/fp16/1-gpu/ vinai/PhoGPT-7B5-Instruct \
+python3 src/services/tensorrt/server.py trt_engines/phogpt-7b5-instruct/fp16/1-gpu/ vinai/PhoGPT-7B5-Instruct \
 --host 127.0.0.1 \
---port 8000 \
+--port 8000
 ```

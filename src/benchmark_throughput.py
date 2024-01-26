@@ -11,8 +11,10 @@ from transformers import (AutoConfig, AutoModelForCausalLM, AutoTokenizer,
 
 from vllm import LLM, SamplingParams
 
-from utils import (DEFAULT_HF_MODEL_DIRS, DEFAULT_PROMPT_TEMPLATES,
-                   load_tokenizer, read_model_name, throttle_generator, print_output)
+from utils import sample_requests
+
+from services.tensorrt import (DEFAULT_HF_MODEL_DIRS, DEFAULT_PROMPT_TEMPLATES,
+                   load_tokenizer, read_model_name, throttle_generator)
 
 import tensorrt_llm
 import tensorrt_llm.profiler
@@ -24,47 +26,7 @@ if PYTHON_BINDINGS:
 
 from tqdm import tqdm
 
-PROMPT_DICT = {
-    "prompt_input": (
-        "Dưới đây là một Instruction mô tả một nhiệm vụ, được ghép nối với một Input cung cấp thêm ngữ cảnh. "
-        "Viết một Response hoàn thành yêu cầu một cách thích hợp.\n\n"
-        "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:"
-    ),
-    "prompt_no_input": (
-        "Dưới đây là một Instruction mô tả một nhiệm vụ. "
-        "Viết một Response hoàn thành yêu cầu một cách thích hợp.\n\n"
-        "### Instruction:\n{instruction}\n\n### Response:"
-    ),
-}
 
-def sample_requests(
-    dataset_path: str,
-    num_requests: int, 
-    tokenizer: PreTrainedTokenizerBase
-):
-    dataset = json.load(open(dataset_path))
-    requests = []
-    for sample in dataset:
-        if sample["input"] == "":
-            prompt = PROMPT_DICT["prompt_no_input"].format_map(sample)
-        else:
-            prompt = PROMPT_DICT["prompt_input"].format_map(sample)
-        prompt_token_ids = tokenizer(prompt).input_ids
-
-        completion = sample["output"]
-        completion_token_ids = tokenizer(completion).input_ids
-
-        if len(prompt_token_ids) < 4 or len(completion_token_ids) < 4:
-            continue
-
-        if len(prompt_token_ids) > 1024 or len(prompt_token_ids) + len(completion_token_ids) > 2048:
-            continue
-
-        requests.append((prompt, len(prompt_token_ids), completion, len(completion_token_ids)))
-        
-        if len(requests) == num_requests:
-            break
-    return requests
 
 def run_vllm(
     requests: List[Tuple[str, int, int]],
@@ -184,29 +146,10 @@ def run_tensorrt(
         tokenizer_type=args.tokenizer_type,
     )
 
-    # # An example to stop generation when the model generate " London" on first sentence, " eventually became" on second sentence
-    # stop_words_list = [[" London"], ["eventually became"]]
-    # stop_words_list = tensorrt_llm.runtime.to_word_list_format(stop_words_list, tokenizer)
-    # stop_words_list = torch.Tensor(stop_words_list).to(torch.int32).to("cuda").contiguous()
     stop_words_list = None
 
-    # # An example to prevent generating " chef" on first sentence, " eventually" and " chef before" on second sentence
-    # bad_words_list = [[" chef"], [" eventually, chef before"]]
-    # bad_words_list = tensorrt_llm.runtime.to_word_list_format(bad_words_list, tokenizer)
-    # bad_words_list = torch.Tensor(bad_words_list).to(torch.int32).to("cuda").contiguous()
     bad_words_list = None
 
-    batch_input_ids = []
-    for (prompt, prompt_len, completions, output_len) in requests:
-        input_ids = tokenizer.encode(prompt,
-                                    add_special_tokens=args.add_special_tokens,
-                                    truncation=True,
-                                    max_length=args.max_input_length)
-        batch_input_ids.append(input_ids)
-    batch_input_ids = [
-        torch.tensor(x, dtype=torch.int32) for x in batch_input_ids
-    ]
-    input_lengths = [x.size(0) for x in batch_input_ids]
     runner_cls = ModelRunner if args.use_py_session else ModelRunnerCpp
     runner_kwargs = dict(engine_dir=args.engine_dir,
                          lora_dir=args.lora_dir,
@@ -221,59 +164,100 @@ def run_tensorrt(
         runner_kwargs.update(medusa_choices=args.medusa_choices)
     if not args.use_py_session:
         runner_kwargs.update(
-            max_batch_size=len(batch_input_ids),
-            max_input_len=max(input_lengths),
+            max_batch_size=args.max_batch_size,
+            max_input_len=args.max_input_len,
             max_output_len=args.max_output_len,
             max_beam_width=args.num_beams,
             max_attention_window_size=args.max_attention_window_size,
             sink_token_length=args.sink_token_length,
         )
     runner = runner_cls.from_dir(**runner_kwargs)
+    
+    pbar = tqdm(total=len(requests))
     start = time.perf_counter()
-    with torch.no_grad():
-        outputs = runner.generate(
-            batch_input_ids,
-            max_new_tokens=args.max_output_len,
-            max_attention_window_size=args.max_attention_window_size,
-            sink_token_length=args.sink_token_length,
-            end_id=end_id,
-            pad_id=pad_id,
-            temperature=args.temperature,
-            top_k=args.top_k,
-            top_p=args.top_p,
-            num_beams=args.num_beams,
-            length_penalty=args.length_penalty,
-            repetition_penalty=args.repetition_penalty,
-            presence_penalty=args.presence_penalty,
-            frequency_penalty=args.frequency_penalty,
-            stop_words_list=stop_words_list,
-            bad_words_list=bad_words_list,
-            lora_uids=args.lora_task_uids,
-            prompt_table_path=args.prompt_table_path,
-            prompt_tasks=args.prompt_tasks,
-            streaming=args.streaming,
-            output_sequence_lengths=True,
-            return_dict=True,
-            medusa_choices=args.medusa_choices)
-        torch.cuda.synchronize()
-    output_ids = outputs['output_ids']
-    sequence_lengths = outputs['sequence_lengths']
-    context_logits = None
-    generation_logits = None
-    if runner.gather_context_logits:
-        context_logits = outputs['context_logits']
-    if runner.gather_generation_logits:
-        generation_logits = outputs['generation_logits']
-    # print_output(tokenizer,
-    #     output_ids,
-    #     input_lengths,
-    #     sequence_lengths,
-    #     output_csv=args.output_csv,
-    #     output_npy=args.output_npy,
-    #     context_logits=context_logits,
-    #     generation_logits=generation_logits,
-    #     output_logits_npy=args.output_logits_npy)
+    batch: List[str] = []
+    max_prompt_len = 0
+    max_output_len = 0
+    for i in range(len(requests)):
+        prompt, prompt_len, completions, output_len = requests[i]
+        # Add the prompt to the batch.
+        batch.append((prompt, prompt_len, completions, output_len))
+        max_prompt_len = max(max_prompt_len, prompt_len)
+        max_output_len = max(max_output_len, output_len)
+        if len(batch) < args.max_batch_size and i != len(requests) - 1:
+            # Check if we can add more requests to the batch.
+            _, next_prompt_len, _, next_output_len = requests[i + 1]
+            if (max(max_prompt_len, next_prompt_len) +
+                    max(max_output_len, next_output_len)) <= 2048:
+                # We can add more requests to the batch.
+                continue
+        
+        batch_input_ids = []
+        for (prompt, prompt_len, completions, output_len) in batch:
+            input_ids = tokenizer.encode(prompt,
+                                        add_special_tokens=args.add_special_tokens,
+                                        truncation=True,
+                                        max_length=args.max_input_len)
+            batch_input_ids.append(input_ids)
+        batch_input_ids = [
+            torch.tensor(x, dtype=torch.int32) for x in batch_input_ids
+        ]
+        input_lengths = [x.size(0) for x in batch_input_ids]
+        
+        with torch.no_grad():
+            outputs = runner.generate(
+                batch_input_ids,
+                max_new_tokens=args.max_output_len,
+                max_attention_window_size=args.max_attention_window_size,
+                sink_token_length=args.sink_token_length,
+                end_id=end_id,
+                pad_id=pad_id,
+                temperature=args.temperature,
+                top_k=args.top_k,
+                top_p=args.top_p,
+                num_beams=args.num_beams,
+                length_penalty=args.length_penalty,
+                repetition_penalty=args.repetition_penalty,
+                presence_penalty=args.presence_penalty,
+                frequency_penalty=args.frequency_penalty,
+                stop_words_list=stop_words_list,
+                bad_words_list=bad_words_list,
+                lora_uids=args.lora_task_uids,
+                prompt_table_path=args.prompt_table_path,
+                prompt_tasks=args.prompt_tasks,
+                streaming=args.streaming,
+                output_sequence_lengths=True,
+                return_dict=True,
+                medusa_choices=args.medusa_choices)
+            torch.cuda.synchronize()
+        output_ids = outputs['output_ids']
+        sequence_lengths = outputs['sequence_lengths']
+        context_logits = None
+        generation_logits = None
+        if runner.gather_context_logits:
+            context_logits = outputs['context_logits']
+        if runner.gather_generation_logits:
+            generation_logits = outputs['generation_logits']
+        batch_size, num_beams, _ = output_ids.size()
+        for batch_idx in range(batch_size):
+            inputs = output_ids[batch_idx][0][:input_lengths[batch_idx]].tolist()
+            input_text = tokenizer.decode(inputs)
+            for beam in range(num_beams):
+                output_begin = input_lengths[batch_idx]
+                output_end = sequence_lengths[batch_idx][beam]
+                outputs = output_ids[batch_idx][beam][
+                    output_begin:output_end].tolist()
+                output_text = tokenizer.decode(outputs)
+
+        output_ids = output_ids.reshape((-1, output_ids.size(2)))
+        pbar.update(len(batch))
+
+        # Clear the batch.
+        batch = []
+        max_prompt_len = 0
+        max_output_len = 0
     end = time.perf_counter()
+
     return end - start
 
 def main(args: argparse.Namespace):
@@ -295,7 +279,7 @@ def main(args: argparse.Namespace):
     elif args.backend == "hf":
         assert args.tensor_parallel_size == 1
         elapsed_time = run_hf(requests, args.model, tokenizer, args.n,
-                              args.use_beam_search, args.hf_max_batch_size,
+                              args.use_beam_search, args.max_batch_size,
                               args.trust_remote_code)
     elif args.backend == "tensorrt":
         elapsed_time = run_tensorrt(requests, args)
@@ -326,13 +310,13 @@ if __name__ == '__main__':
     parser.add_argument("--use-beam-search", action="store_true")
     parser.add_argument("--num-requests",
                         type=int,
-                        default=8,
+                        default=100,
                         help="Number of prompts to process.")
     parser.add_argument("--seed", type=int, default=0)
-    parser.add_argument("--hf-max-batch-size",
+    parser.add_argument("--max-batch-size",
                         type=int,
                         default=None,
-                        help="Maximum batch size for HF backend.")
+                        help="Maximum batch size")
     parser.add_argument('--trust-remote-code',
                         action='store_true',
                         help='trust remote code from huggingface')
@@ -353,7 +337,6 @@ if __name__ == '__main__':
         'for BF16 models.')
 
     # Argument for TensorRT
-    parser.add_argument('--max_output_len', type=int, required=True)
     parser.add_argument(
         '--max_attention_window_size',
         type=int,
@@ -371,7 +354,8 @@ if __name__ == '__main__':
                         default=False,
                         action='store_true',
                         help="Whether or not to use Python runtime session")
-    parser.add_argument('--max_input_length', type=int, default=923)
+    parser.add_argument('--max_input_len', type=int, default=1024)
+    parser.add_argument('--max_output_len', type=int, default=1024)
     parser.add_argument('--output_csv',
                         type=str,
                         help='CSV file where the tokenized output is stored.',
@@ -468,10 +452,10 @@ if __name__ == '__main__':
         args.tokenizer = args.model
 
     if args.backend == "vllm":
-        if args.hf_max_batch_size is not None:
+        if args.max_batch_size is not None:
             raise ValueError("HF max batch size is only for HF backend.")
     elif args.backend == "hf":
-        if args.hf_max_batch_size is None:
+        if args.max_batch_size is None:
             raise ValueError("HF max batch size is required for HF backend.")
         if args.quantization is not None:
             raise ValueError("Quantization is only for vLLM backend.")

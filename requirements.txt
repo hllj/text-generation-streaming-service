@@ -1,3 +1,5 @@
+# HF - vLLM
+transformers>=4.35.0
 ninja  # For faster builds.
 psutil
 ray >= 2.5.1
@@ -12,6 +14,7 @@ aioprometheus[starlette]
 vllm
 prometheus-fastapi-instrumentator
 
+# TensorRT
 accelerate==0.25.0
 build
 colored
@@ -30,3 +33,7 @@ wheel
 optimum
 evaluate
 janus
+
+# Quantization
+autoawq==0.1.8
+auto-gptq

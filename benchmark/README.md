@@ -1,9 +1,52 @@
-# Float16
+# Offline Benchmark
 
-Device: RTX 3090
+## Float16
+
+Device: A100 PCIE
 
 | Backend  | Token/s | Requests/s |
 |----------|---------|------------|
-| vLLM     | 1229.33 | 6.20       |
-| HF       | 109.82  | 0.55       |
-| TensorRT |         |            |
+| vLLM     | 2080.24 | 10.49      |
+| HF       | 294.42  | 1.48       |
+| TensorRT | 164.16  | 0.83       |
+
+Script:
+
+```bash
+python3 src/benchmark_throughput.py \
+--backend vllm \
+--model vinai/PhoGPT-7B5-Instruct \
+--tokenizer vinai/PhoGPT-7B5-Instruct \
+--n 1 \
+--num-requests 100 \
+--seed 42 \
+--dtype float16 \
+--max_output_len 1024
+```
+
+```bash
+python3 src/benchmark_throughput.py \
+--backend hf \
+--model vinai/PhoGPT-7B5-Instruct \
+--tokenizer vinai/PhoGPT-7B5-Instruct \
+--n 1 \
+--num-requests 100 \
+--seed 42 \
+--dtype float16 \
+--max_output_len 1024 \
+--max-batch-size 8
+```
+
+```bash
+python3 src/benchmark_throughput.py \
+--backend tensorrt \
+--engine_dir trt_engines/phogpt-7b5-instruct/fp16/1-gpu/ \
+--use_py_session \
+--max_input_len 1024 \
+--max_output_len 1024 \
+--tokenizer_dir vinai/PhoGPT-7B5-Instruct \
+--max-batch-size 16 \
+--num-requests 100
+```
+
+# Online Benchmark - Serving

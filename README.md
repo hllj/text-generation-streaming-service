@@ -27,6 +27,12 @@ python3 -c "import tensorrt_llm; print(tensorrt_llm.__version__)"
 pip3 install -r requirements.txt
 ```
 
+4. Login HuggingFace with Read Token
+
+```bash
+huggingface-cli login
+```
+
 ## Start vLLM service
 
 ```bash

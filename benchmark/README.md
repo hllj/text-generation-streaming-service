@@ -50,3 +50,22 @@ python3 src/benchmark_throughput.py \
 ```
 
 # Online Benchmark - Serving
+
+Test with 1000 prompts from dataset.
+
+Device: A100 PCIE
+
+| Backend + Config | Throughput (req/s) | Avg latecy (s) | Avg latency per token (s) | Avg latency per output token (s) |
+|------------------|--------------------|----------------|---------------------------|----------------------------------|
+| vLLM - float32   | 2.15               | 230.08         | 1.62                      | 6.76                             |
+| vLLM - float16   | 15.15              | 32.89          | 0.20                      | 0.71                             |
+| HF               |                    |                |                           |                                  |
+| TensorRT         |                    |                |                           |                                  |
+
+```bash
+python3 src/benchmark_serving.py \
+--backend vllm \
+--seed 42 \
+--tokenizer vinai/PhoGPT-7B5-Instruct \
+--num-requests 1000
+```

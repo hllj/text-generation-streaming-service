@@ -4,5 +4,5 @@ python3 src/services/vllm/server.py \
 --model vinai/PhoGPT-7B5-Instruct \
 --tokenizer vinai/PhoGPT-7B5-Instruct \
 --load-format auto \
---dtype bfloat16 \
+--dtype float16 \
 --seed 42

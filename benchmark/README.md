@@ -60,13 +60,20 @@ Device: A100 PCIE
 |--------------------|--------------------|----------------|---------------------------|----------------------------------|
 | vLLM - float32     | 2.15               | 230.08         | 1.62                      | 6.76                             |
 | vLLM - float16     | 15.15              | 32.89          | 0.20                      | 0.71                             |
-| HF                 |                    |                |                           |                                  |
 | TensorRT - float16 | 6.85               | 69.78          | 0.50                      | 2.15                             |
 | TensorRT - int8    | 8.90               | 57.36          | 0.42                      | 1.81                             |
 
 ```bash
 python3 src/benchmark_serving.py \
 --backend vllm \
+--seed 42 \
+--tokenizer vinai/PhoGPT-7B5-Instruct \
+--num-requests 1000
+```
+
+```bash
+python3 src/benchmark_serving.py \
+--backend tensorrt \
 --seed 42 \
 --tokenizer vinai/PhoGPT-7B5-Instruct \
 --num-requests 1000

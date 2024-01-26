@@ -68,7 +68,7 @@ python3 src/services/tensorrt/convert_hf_mpt_to_ft.py \
 -t float16
 ```
 
-### Build Engine
+### Build Engine for quantized weights
 
 - Build engine for float16
 
@@ -120,6 +120,23 @@ python3 src/services/tensorrt/build.py \
 --max_output_len 1024 \
 --max_num_tokens 2048
 ```
+
+### Post-training quantization
+
+- Still failed to convert to AWQ with MPT
+
+1. Convert with AMMO fp8 / int8_sq / int4_awq (Add quantization dataset with Vietnamese)
+
+```bash
+python3 src/quantization/quantize.py \
+--model_dir vinai/PhoGPT-7B5-Instruct \
+--qformat int4_awq \
+--calib_size 128 \
+--export_path ./weights/phogpt-7b5-instruct/int4_awq \
+--seed 42
+```
+
+2. Build engine
 
 ### Run a test
 

@@ -56,7 +56,7 @@ python3 src/services/vllm/server.py \
 
 ### Quantization
 
-## Convert HF weight to Float16
+## Convert HF weight to Float16 / Int8 / Int4
 
 Follow instruction in /services/tensorrt README.
 
@@ -70,6 +70,8 @@ python3 src/services/tensorrt/convert_hf_mpt_to_ft.py \
 
 ### Build Engine
 
+- Build engine for float16
+
 ```bash
 python3 src/services/tensorrt/build.py \
 --model_dir=./weights/ft/phogpt-7b5-instruct/fp16/1-gpu/ \
@@ -79,6 +81,41 @@ python3 src/services/tensorrt/build.py \
 --use_gpt_attention_plugin \
 --use_gemm_plugin \
 --output_dir ./trt_engines/phogpt-7b5-instruct/fp16/1-gpu/ \
+--max_input_len 1024 \
+--max_output_len 1024 \
+--max_num_tokens 2048
+```
+
+- Build engine for int8
+
+```bash
+python3 src/services/tensorrt/build.py \
+--model_dir=./weights/ft/phogpt-7b5-instruct/fp16/1-gpu/ \
+--max_batch_size 16 \
+--use_inflight_batching \
+--paged_kv_cache \
+--use_weight_only \
+--use_gpt_attention_plugin \
+--use_gemm_plugin \
+--output_dir ./trt_engines/phogpt-7b5-instruct/int8_weight_only/1-gpu/ \
+--max_input_len 1024 \
+--max_output_len 1024 \
+--max_num_tokens 2048
+```
+
+- Build engine for int4 (bad result)
+
+```bash
+python3 src/services/tensorrt/build.py \
+--model_dir=./weights/ft/phogpt-7b5-instruct/fp16/1-gpu/ \
+--max_batch_size 16 \
+--use_inflight_batching \
+--paged_kv_cache \
+--use_weight_only \
+--weight_only_precision int4 \
+--use_gpt_attention_plugin \
+--use_gemm_plugin \
+--output_dir ./trt_engines/phogpt-7b5-instruct/int4_weight_only/1-gpu \
 --max_input_len 1024 \
 --max_output_len 1024 \
 --max_num_tokens 2048

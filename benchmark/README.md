@@ -6,9 +6,10 @@ Device: A100 PCIE
 
 | Backend  | Token/s | Requests/s |
 |----------|---------|------------|
-| vLLM     | 2080.24 | 10.49      |
-| HF       | 294.42  | 1.48       |
-| TensorRT | 164.16  | 0.83       |
+| vLLM - float16     | 2080.24 | 10.49      |
+| HF - float16       | 294.42  | 1.48       |
+| TensorRT - float16 | 164.16  | 0.83       |
+| TensorRT - int8    | 249.56  | 1.26       |
 
 Script:
 
@@ -55,12 +56,13 @@ Test with 1000 prompts from dataset.
 
 Device: A100 PCIE
 
-| Backend + Config | Throughput (req/s) | Avg latecy (s) | Avg latency per token (s) | Avg latency per output token (s) |
-|------------------|--------------------|----------------|---------------------------|----------------------------------|
-| vLLM - float32   | 2.15               | 230.08         | 1.62                      | 6.76                             |
-| vLLM - float16   | 15.15              | 32.89          | 0.20                      | 0.71                             |
-| HF               |                    |                |                           |                                  |
-| TensorRT         |                    |                |                           |                                  |
+| Backend + Config   | Throughput (req/s) | Avg latecy (s) | Avg latency per token (s) | Avg latency per output token (s) |
+|--------------------|--------------------|----------------|---------------------------|----------------------------------|
+| vLLM - float32     | 2.15               | 230.08         | 1.62                      | 6.76                             |
+| vLLM - float16     | 15.15              | 32.89          | 0.20                      | 0.71                             |
+| HF                 |                    |                |                           |                                  |
+| TensorRT - float16 | 6.85               | 69.78          | 0.50                      | 2.15                             |
+| TensorRT - int8    | 8.90               | 57.36          | 0.42                      | 1.81                             |
 
 ```bash
 python3 src/benchmark_serving.py \

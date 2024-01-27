@@ -78,3 +78,11 @@ python3 src/benchmark_serving.py \
 --tokenizer vinai/PhoGPT-7B5-Instruct \
 --num-requests 1000
 ```
+
+```bash
+python3 src/benchmark_serving.py \
+--backend hf \
+--seed 42 \
+--tokenizer vinai/PhoGPT-7B5-Instruct \
+--num-requests 1000
+```

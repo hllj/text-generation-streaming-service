@@ -58,6 +58,7 @@ async def generate(request: Request) -> Response:
         max_new_tokens=request_dict.pop("max_new_tokens", 100),
         eos_token_id=engine.tokenizer.eos_token_id,  
         pad_token_id=engine.tokenizer.pad_token_id,
+        use_cache=True
     )
 
     generator = engine.async_generate(prompt, **kwargs)

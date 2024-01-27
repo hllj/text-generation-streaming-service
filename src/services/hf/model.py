@@ -14,7 +14,7 @@ class AsyncModel():
         self.model.eval()
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=trust_remote_code)
 
-    def async_generate(self, prompt, **kwargs):
+    async def async_generate(self, prompt, **kwargs):
         input_ids = self.tokenizer(prompt, return_tensors="pt")
         streamer = TextIteratorStreamer(self.tokenizer)
         generation_kwargs = dict(
@@ -23,9 +23,13 @@ class AsyncModel():
             streamer=streamer,
             **kwargs
         )
-        # self.model.generate(**generation_kwargs)
-        thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
-        thread.start()
+        async def generation(generation_kwargs):
+            # thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+            # thread.start()
+            self.model.generate(**generation_kwargs)
+        
+        await generation(generation_kwargs)
+        
         for text in streamer:
             yield text
 

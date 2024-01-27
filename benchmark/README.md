@@ -62,6 +62,7 @@ Device: A100 PCIE
 | vLLM - float16     | 15.15              | 32.89          | 0.20                      | 0.71                             |
 | TensorRT - float16 | 6.85               | 69.78          | 0.50                      | 2.15                             |
 | TensorRT - int8    | 8.90               | 57.36          | 0.42                      | 1.81                             |
+| HF - float16       | 0.47               | 191.43         | 1.49                      | 6.74                             |
 
 ```bash
 python3 src/benchmark_serving.py \

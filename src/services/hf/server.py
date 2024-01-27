@@ -66,7 +66,7 @@ async def generate(request: Request) -> Response:
     # Streaming case
     async def stream_results():
         output_text = ""
-        for text in generator:
+        async for text in generator:
             output_text += text
             ret = {"text": prompt + output_text}
             yield (json.dumps(ret) + "\0").encode("utf-8")

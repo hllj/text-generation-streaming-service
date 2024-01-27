@@ -47,7 +47,7 @@ outputs = model.generate(
     pad_token_id=tokenizer.pad_token_id  
 )  
   
-response = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]  
+response = tokenizer.batch_decode(outputs, skip_special_tokens=True)[0]
 response = response.split("### Trả lời:")[1]
 
 print(response)

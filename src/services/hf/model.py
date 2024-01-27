@@ -37,8 +37,6 @@ class AsyncModel():
             **kwargs
         )
 
-        print('check', generation_kwargs)
-
         output = self.model.generate(**generation_kwargs)
         output = self.tokenizer.batch_decode(output, skip_special_tokens=True)[0]
         return output

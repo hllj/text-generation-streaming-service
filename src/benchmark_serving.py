@@ -34,6 +34,8 @@ async def send_request(api_url, prompt, prompt_len, output_len, backend, best_of
         payload["stop_token_ids"] = [2]
     elif backend == 'tensorrt':
         payload["max_num_tokens"] = output_len
+    elif backend == 'hf':
+        payload["max_new_tokens"] = output_len
     headers = {
         "User-Agent": "Benchmark Client"
     }
@@ -136,7 +138,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend",
                         type=str,
                         default="vllm",
-                        choices=["vllm", "tensorrt"])
+                        choices=["vllm", "tensorrt", "hf"])
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--tokenizer", type=str, default="vinai/PhoGPT-7B5-Instruct")
     parser.add_argument("--protocol",

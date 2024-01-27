@@ -7,12 +7,22 @@ import uvicorn
 from tensorrt_llm.executor import GenerationExecutor
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 TIMEOUT_TO_PREVENT_DEADLOCK = 1  # seconds.
 app = FastAPI()
+instrumentator = Instrumentator().instrument(app)
 executor: GenerationExecutor | None = None
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/stats")
 async def stats() -> Response:
@@ -25,6 +35,9 @@ async def health() -> Response:
     """Health check."""
     return Response(status_code=200)
 
+@app.on_event("startup")
+async def _startup():
+    instrumentator.expose(app)
 
 @app.post("/generate")
 async def generate(request: Request) -> Response:

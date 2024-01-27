@@ -163,3 +163,24 @@ python3 src/services/tensorrt/server.py trt_engines/phogpt-7b5-instruct/fp16/1-g
 --host 127.0.0.1 \
 --port 8000
 ```
+
+## Benchmark
+
+Benchmark performed on the [Bactrian-X dataset](https://huggingface.co/datasets/MBZUAI/Bactrian-X).
+The figures are summarized in /benchmark [here](benchmark/README.md).
+
+## Optional
+
+Start monitoring with prometheus, grafana
+
+1. Start the service in port 8000
+
+2. Start prometheus and grafana
+
+```bash
+docker-compose up
+```
+
+3. Check the /metrics endpoint in port 8000
+
+4. Check visualization in grafana

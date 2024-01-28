@@ -33,6 +33,22 @@ pip3 install -r requirements.txt
 huggingface-cli login
 ```
 
+## Start HF Service
+
+```bash
+bash start_hf_server.sh
+```
+
+or
+
+```bash
+python3 src/services/hf/server.py \
+--host 127.0.0.1 \
+--port 8000 \
+--model-path vinai/PhoGPT-7B5-Instruct \
+--dtype float16
+```
+
 ## Start vLLM service
 
 ```bash
@@ -124,6 +140,7 @@ python3 src/services/tensorrt/build.py \
 ### Post-training quantization
 
 - Still failed to convert to AWQ with MPT
+- Failed to convert to GPTQ with MPT
 
 1. Convert with AMMO fp8 / int8_sq / int4_awq (Add quantization dataset with Vietnamese)
 
